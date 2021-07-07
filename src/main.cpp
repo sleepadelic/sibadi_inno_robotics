@@ -1,14 +1,9 @@
 #include <Arduino.h>
 #include "robot_config.h"
-#include <ros.h>
-#include <std_msgs/Float32.h>
-#include <geometry_msgs/Twist.h>
 #include "WheelEncoder.h"
 #include "GyverPID.h"
 #include <EnableInterrupt.h>
-#include "Generator.h"
-#include <std_srvs/Empty.h>
-
+#include "ros_init.h"
 
 WheelEncoder LR_enc(LR_ENCODER_PIN);
 WheelEncoder RR_enc(RR_ENCODER_PIN);
@@ -17,6 +12,7 @@ void rightWheelSetValue(int value);
 
 double w_r=0, w_l=0;
 
+// motor odometry interrupts
 void LR_enc_ISR(){
   if(w_l>=0){
     LR_enc.odom++;
@@ -37,42 +33,14 @@ void RR_enc_ISR(){
   }
 }
 
-unsigned long outDel = 0;
+unsigned long outDel = 0; // ros message sent delay
 void SendCurrentSpeedToROS();
 void SendOdomToROS();
-//ROS_INIT
-using std_srvs::Empty;
-ros::NodeHandle nh;
-std_msgs::Float32 LR_speed_msg;
-ros::Publisher LR_SpeedPublisher("LR_speed", &LR_speed_msg);
-std_msgs::Float32 RR_speed_msg;
-ros::Publisher RR_SpeedPublisher("RR_speed", &RR_speed_msg);
-std_msgs::Float32 LR_odom_msg;
-ros::Publisher LR_OdomPublisher("LR_ticks", &LR_odom_msg);
-std_msgs::Float32 RR_odom_msg;
-ros::Publisher RR_OdomPublisher("RR_ticks", &RR_odom_msg);
-std_msgs::Float32 LR_pwr_msg;
-ros::Publisher LR_PwrPublisher("LR_pwr", &LR_pwr_msg);
-std_msgs::Float32 RR_pwr_msg;
-ros::Publisher RR_PwrPublisher("RR_pwr", &RR_pwr_msg);
 
-Generator gen;
-// Generator start service
-void gen_start(const Empty::Request & req, Empty::Response & res)
-{
-  gen.start();
-}
-ros::ServiceServer<Empty::Request, Empty::Response> gen_starter_service("gen_start", &gen_start);
-
-// Generator stop service
-void gen_stop(const Empty::Request & req, Empty::Response & res)
-{
-  gen.stop();
-}
-ros::ServiceServer<Empty::Request, Empty::Response> gen_stopper_service("gen_stop", &gen_start);
+//ROS_INIT moved to ros_init.h
 
 
-GyverPID L_regulator(100, 10, 0, 10);
+GyverPID L_regulator(100, 10, 0, 10); //TODO: try get it from params
 GyverPID R_regulator(100, 10, 0, 10);
 
 void SpeedMessageCallback( const geometry_msgs::Twist& msg){
@@ -130,6 +98,7 @@ void ConfigPIDs(){
   R_regulator.setLimits(0,  255);
   R_regulator.setpoint = 0;
 }
+
 void setup() {
   ConfigPins();
   ConfigROS();
@@ -137,7 +106,6 @@ void setup() {
   enableInterrupt(RR_ENCODER_PIN, RR_enc_ISR, RISING);
   enableInterrupt(LR_ENCODER_PIN, LR_enc_ISR, RISING);
 }
-
 
 void loop() {
 
