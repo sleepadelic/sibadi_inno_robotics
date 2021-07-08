@@ -11,6 +11,9 @@
 #define RELAY_CONTROLLER 9 // 
 #define RELAY_PWR_SUPPLY 12 // Реле вентиляторов и т.п.
 
-#define RELAY_GEN_STARTER 10 //TODO: CHECK 
-#define RELAY_GEN_STOPPER 11 //TODO: CHECK  
-#define GEN_START_TIME 5 //seconds 
+#define RELAY_GEN_STARTER 11 //3 sec HIGH to start
+#define RELAY_GEN_STOPPER 10 //set LOW to stop generator 
+#define GEN_START_TIME 3 //seconds 
+
+#define DEBUG_PIN A1
+#define DEBUG_IS_ENABLE true

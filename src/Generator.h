@@ -7,7 +7,6 @@ private:
     /* data */
 public:
     bool isStarted = false;
-
     Generator(/* args */);
     ~Generator();
     void start();
@@ -24,17 +23,13 @@ Generator::~Generator()
 }
 
 void Generator::start(){
-    if (Generator::isStarted == false)
-    {
-        digitalWrite(RELAY_GEN_STOPPER, LOW);
-        digitalWrite(RELAY_GEN_STARTER, HIGH);
-        delay(1000*GEN_START_TIME);
-        digitalWrite(RELAY_GEN_STARTER, LOW);
-        Generator::isStarted = true;
-    }
+    
+    digitalWrite(RELAY_GEN_STOPPER, HIGH);
+    digitalWrite(RELAY_GEN_STARTER, HIGH);
+    delay(GEN_START_TIME*1000);
+    digitalWrite(RELAY_GEN_STARTER, LOW);
 }
 void Generator::stop(){
     digitalWrite(RELAY_GEN_STARTER, LOW);
-    digitalWrite(RELAY_GEN_STOPPER, HIGH);
-    Generator::isStarted = false;
+    digitalWrite(RELAY_GEN_STOPPER, LOW);
 }

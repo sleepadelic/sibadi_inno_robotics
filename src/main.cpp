@@ -4,14 +4,21 @@
 #include "GyverPID.h"
 #include <EnableInterrupt.h>
 #include "ros_init.h"
+#include <std_srvs/Empty.h>
+#include <std_srvs/SetBool.h>
+#include <std_msgs/Float32.h>
+#include <ros/service_server.h>
+#include <rosserial_arduino/Test.h>
 
 WheelEncoder LR_enc(LR_ENCODER_PIN);
 WheelEncoder RR_enc(RR_ENCODER_PIN);
 void leftWheelSetValue(int value);
 void rightWheelSetValue(int value);
 
-double w_r=0, w_l=0;
+boolean debug_pin_state;
 
+double w_r=0, w_l=0;
+ using rosserial_arduino::Test;
 // motor odometry interrupts
 void LR_enc_ISR(){
   if(w_l>=0){
@@ -40,7 +47,7 @@ void SendOdomToROS();
 //ROS_INIT moved to ros_init.h
 
 
-GyverPID L_regulator(100, 10, 0, 10); //TODO: try get it from params
+GyverPID L_regulator(100, 10, 0, 10);
 GyverPID R_regulator(100, 10, 0, 10);
 
 void SpeedMessageCallback( const geometry_msgs::Twist& msg){
@@ -63,6 +70,54 @@ void SpeedMessageCallback( const geometry_msgs::Twist& msg){
 
 ros::Subscriber<geometry_msgs::Twist> sub("cmd_vel", &SpeedMessageCallback); //Command topic subsciber
 
+
+Generator gen;
+// Generator start service
+void gen_start(const std_msgs::Bool &msg)
+{
+  if (msg.data==true){
+    gen.start();
+    gen.isStarted=true;
+  }
+  else
+  {
+    gen.stop();
+    gen.isStarted=false;
+  }
+  
+}
+ros::Subscriber<std_msgs::Bool> gen_sub("/gen_start_stop", &gen_start);
+
+void ConfigROS(){
+  nh.initNode();
+  nh.advertise(LR_SpeedPublisher);
+  nh.advertise(RR_SpeedPublisher);
+  nh.advertise(LR_OdomPublisher);
+  nh.advertise(RR_OdomPublisher);
+  nh.advertise(LR_PwrPublisher);
+  nh.advertise(RR_PwrPublisher);
+  nh.subscribe(sub);
+  nh.subscribe(gen_sub);
+}
+
+void SendCurrentSpeedToROS(){
+  
+    LR_speed_msg.data = LR_enc.getLinearSpeed(WHEELRADIUS);
+    RR_speed_msg.data = RR_enc.getLinearSpeed(WHEELRADIUS);
+
+    LR_SpeedPublisher.publish(&LR_speed_msg);
+    RR_SpeedPublisher.publish(&RR_speed_msg);
+    SendOdomToROS();
+}
+void SendOdomToROS(){
+
+  LR_odom_msg.data = LR_enc.odom;
+  RR_odom_msg.data = RR_enc.odom;
+
+    LR_OdomPublisher.publish(&LR_odom_msg);
+    RR_OdomPublisher.publish(&RR_odom_msg);
+}
+
 void ConfigPins(){
   // DRIVE CONTROL
   pinMode(R_DR_DIR, OUTPUT);
@@ -75,27 +130,18 @@ void ConfigPins(){
   // GEN CONTROL
   pinMode(RELAY_GEN_STARTER, OUTPUT);
   pinMode(RELAY_GEN_STOPPER, OUTPUT);
+
+  pinMode(DEBUG_PIN, OUTPUT);
+
   digitalWrite(RELAY_PWR_SUPPLY, HIGH);
   digitalWrite(RELAY_CONTROLLER, HIGH);
   
 }
-void ConfigROS(){
-  nh.initNode();
-  nh.advertise(LR_SpeedPublisher);
-  nh.advertise(RR_SpeedPublisher);
-  nh.advertise(LR_OdomPublisher);
-  nh.advertise(RR_OdomPublisher);
-  nh.advertise(LR_PwrPublisher);
-  nh.advertise(RR_PwrPublisher);
-  nh.subscribe(sub);
 
-  nh.advertiseService(gen_starter_service);
-  nh.advertiseService(gen_stopper_service);
-}
 void ConfigPIDs(){
-  L_regulator.setLimits(0,  255);
+  L_regulator.setLimits(0,  180);
   L_regulator.setpoint = 0;
-  R_regulator.setLimits(0,  255);
+  R_regulator.setLimits(0,  180);
   R_regulator.setpoint = 0;
 }
 
@@ -108,7 +154,12 @@ void setup() {
 }
 
 void loop() {
-
+  if (DEBUG_IS_ENABLE)
+  {
+    debug_pin_state^=true;
+    digitalWrite(DEBUG_PIN, debug_pin_state);
+  }
+  
   LR_enc.tick();
   RR_enc.tick();
 
@@ -134,30 +185,15 @@ void loop() {
   {
     rightWheelSetValue(0);
   }
-  SendCurrentSpeedToROS();
+  if (millis()-outDel >= 100)
+  {
+    SendCurrentSpeedToROS();
+    outDel = millis();
+  }
   nh.spinOnce();
 }
 
-void SendCurrentSpeedToROS(){
-  if (millis()-outDel >= 100)
-  {
-    LR_speed_msg.data = LR_enc.getLinearSpeed(WHEELRADIUS);
-    RR_speed_msg.data = RR_enc.getLinearSpeed(WHEELRADIUS);
 
-    LR_SpeedPublisher.publish(&LR_speed_msg);
-    RR_SpeedPublisher.publish(&RR_speed_msg);
-    SendOdomToROS();
-    outDel = millis();
-  }
-}
-void SendOdomToROS(){
-
-  LR_odom_msg.data = LR_enc.odom;
-  RR_odom_msg.data = RR_enc.odom;
-
-    LR_OdomPublisher.publish(&LR_odom_msg);
-    RR_OdomPublisher.publish(&RR_odom_msg);
-}
 void leftWheelSetValue(int value){
   if (w_l>=0)
   {

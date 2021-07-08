@@ -48,7 +48,6 @@ class ServiceServer : public Subscriber_
 {
 public:
   typedef void(ObjT::*CallbackT)(const MReq&,  MRes&);
-
   ServiceServer(const char* topic_name, CallbackT cb, ObjT* obj) :
     pub(topic_name, &resp, rosserial_msgs::TopicInfo::ID_SERVICE_SERVER + rosserial_msgs::TopicInfo::ID_PUBLISHER),
     obj_(obj)

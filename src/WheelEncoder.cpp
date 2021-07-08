@@ -1,8 +1,7 @@
 #include "WheelEncoder.h"
 
 
-
-WheelEncoder::WheelEncoder(int EncoderPin)
+WheelEncoder::WheelEncoder(uint8_t EncoderPin)
 {
     e_pin = EncoderPin;
     pinMode(e_pin, INPUT); //Config encoder pin

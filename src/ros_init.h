@@ -3,6 +3,7 @@
 #include <std_msgs/Float32.h>
 #include <geometry_msgs/Twist.h>
 #include <std_srvs/Empty.h>
+#include <std_msgs/Bool.h>
 #include "Generator.h"
 
 using std_srvs::Empty;
@@ -20,17 +21,4 @@ ros::Publisher LR_PwrPublisher("LR_pwr", &LR_pwr_msg);
 std_msgs::Float32 RR_pwr_msg;
 ros::Publisher RR_PwrPublisher("RR_pwr", &RR_pwr_msg);
 
-Generator gen;
-// Generator start service
-void gen_start(const Empty::Request & req, Empty::Response & res)
-{
-  gen.start();
-}
-ros::ServiceServer<Empty::Request, Empty::Response> gen_starter_service("gen_start", &gen_start);
 
-// Generator stop service
-void gen_stop(const Empty::Request & req, Empty::Response & res)
-{
-  gen.stop();
-}
-ros::ServiceServer<Empty::Request, Empty::Response> gen_stopper_service("gen_stop", &gen_start);

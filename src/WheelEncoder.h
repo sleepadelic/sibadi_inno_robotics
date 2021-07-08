@@ -12,7 +12,7 @@ private:
 
 public:
     uint8_t e_pin;
-    WheelEncoder(int EncoderPin);
+    WheelEncoder(uint8_t EncoderPin);
     float getLinearSpeed(float wheelRadius);
     long odom = 0; //Current position in ticks
     float currentSpeed_RpS = 0.0;
