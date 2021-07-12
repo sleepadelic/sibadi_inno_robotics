@@ -3,7 +3,6 @@
 class WheelEncoder
 {
 private:
-    
     void updateSpeed();
     long prevousOdom = 0;
     unsigned long e_pr_millis = 0;
@@ -18,5 +17,3 @@ public:
     float currentSpeed_RpS = 0.0;
     void tick();
 };
-
-

@@ -6,14 +6,17 @@
 #define L_DR_PWM 5
 #define L_DR_DIR 4
 
+#define DR_PWM_MIN 120
+#define DR_PWM_MAX 250
+
 #define WHEELRADIUS 0.3 //m
 
-#define RELAY_CONTROLLER 9 // 
+#define RELAY_CONTROLLER 9  //
 #define RELAY_PWR_SUPPLY 12 // Реле вентиляторов и т.п.
 
 #define RELAY_GEN_STARTER 11 //3 sec HIGH to start
-#define RELAY_GEN_STOPPER 10 //set LOW to stop generator 
-#define GEN_START_TIME 3 //seconds 
+#define RELAY_GEN_STOPPER 10 //set LOW to stop generator
+#define GEN_START_TIME 3     //seconds
 
 #define DEBUG_PIN A1
 #define DEBUG_IS_ENABLE true
