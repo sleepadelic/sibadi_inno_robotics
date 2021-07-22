@@ -1,13 +1,11 @@
 #include <Arduino.h>
 #include "robot_config.h"
 #include "WheelEncoder.h"
-#include "GyverPID.h"
 #include <EnableInterrupt.h>
 #include "ros_init.h"
 #include <std_srvs/Empty.h>
 #include <std_srvs/SetBool.h>
 #include <std_msgs/Float32.h>
-#include <ros/service_server.h>
 #include <rosserial_arduino/Test.h>
 
 WheelEncoder LR_enc(LR_ENCODER_PIN);
@@ -15,11 +13,12 @@ WheelEncoder RR_enc(RR_ENCODER_PIN);
 void leftWheelSetValue(int value);
 void rightWheelSetValue(int value);
 
+unsigned long cmd_WatchdogMillis = 0;
 boolean debug_pin_state;
 int ov_L;
 int ov_R;
 int w_r = 0, w_l = 0;
-using rosserial_arduino::Test;
+
 // motor odometry interrupts
 void LR_enc_ISR()
 {
@@ -45,29 +44,37 @@ void RR_enc_ISR()
   }
 }
 
+void cmd_velWatchdog()
+{
+  if (millis() - cmd_WatchdogMillis > 400)
+  {
+    w_l = 0;
+    w_r = 0;
+    ov_L = 0;
+    ov_R = 0;
+  }
+}
+void cmd_velWatchdogReset()
+{
+  cmd_WatchdogMillis = millis();
+}
+
 unsigned long outDel = 0; // ros message sent delay
 
 void SendCurrentSpeedToROS();
 void SendOdomToROS();
 
-// GyverPID L_regulator(10000, 0 , 0, 100);
-// GyverPID R_regulator(10000, 0, 0, 100);
-
 void SpeedMessageCallback(const geometry_msgs::Twist &msg)
 {
-
+  cmd_velWatchdogReset();
   w_r = (msg.linear.x + (msg.angular.z / 2.0)) * 1000;
   w_l = (msg.linear.x - (msg.angular.z / 2.0)) * 1000;
   w_r = constrain(w_r, -1000, 1000);
   w_l = constrain(w_l, -1000, 1000);
-  ov_L = map(abs(w_l), 0, 1000, DR_PWM_MIN + 10, DR_PWM_MAX - 10);
-  ov_R = map(abs(w_r), 0, 1000, DR_PWM_MIN + 10, DR_PWM_MAX - 10);
-  ov_L = constrain(ov_L, DR_PWM_MIN + 10, DR_PWM_MAX - 10);
-  ov_R = constrain(ov_R, DR_PWM_MIN + 10, DR_PWM_MAX - 10);
-  ov_L=DR_PWM_MIN;
-  ov_R=DR_PWM_MIN;
-  // L_regulator.setpoint = abs(w_l);
-  // R_regulator.setpoint = abs(w_r);
+  ov_L = map(abs(w_l), 0, 1000, DR_PWM_MIN, DR_PWM_MAX - 50);
+  ov_R = map(abs(w_r), 0, 1000, DR_PWM_MIN, DR_PWM_MAX - 50);
+  ov_L = constrain(ov_L, DR_PWM_MIN, DR_PWM_MAX - 50);
+  ov_R = constrain(ov_R, DR_PWM_MIN, DR_PWM_MAX - 50);
 
   if (w_l == 0 && w_r == 0)
   {
@@ -87,12 +94,12 @@ Generator gen;
 // Generator start service
 void gen_start(const std_msgs::Bool &msg)
 {
-  if (msg.data == true)
+  if (msg.data == true && gen.isStarted == false)
   {
     gen.start();
     gen.isStarted = true;
   }
-  else
+  if (msg.data == false)
   {
     gen.stop();
     gen.isStarted = false;
@@ -159,25 +166,18 @@ void ConfigPins()
   digitalWrite(RELAY_CONTROLLER, HIGH);
 }
 
-void ConfigPIDs()
-{
-  // L_regulator.setLimits(DR_PWM_MIN, DR_PWM_MAX);
-  // L_regulator.setpoint = 100;
-  // R_regulator.setLimits(DR_PWM_MIN, DR_PWM_MAX);
-  // R_regulator.setpoint = 100;
-}
-
 void setup()
 {
   ConfigPins();
   ConfigROS();
-  ConfigPIDs();
   enableInterrupt(RR_ENCODER_PIN, RR_enc_ISR, RISING);
   enableInterrupt(LR_ENCODER_PIN, LR_enc_ISR, RISING);
 }
 
 void loop()
 {
+  cmd_velWatchdog();
+  
   if (DEBUG_IS_ENABLE)
   {
     debug_pin_state ^= true;
@@ -186,14 +186,6 @@ void loop()
 
   LR_enc.tick();
   RR_enc.tick();
-
-  // L_regulator.input = abs(LR_enc.getLinearSpeed(WHEELRADIUS));
-  // R_regulator.input = abs(RR_enc.getLinearSpeed(WHEELRADIUS));
-  // RR_pwr_msg.data = R_regulator.getResultTimer();
-  // RR_PwrPublisher.publish(&RR_pwr_msg);
-  // LR_pwr_msg.data = L_regulator.getResultTimer();
-  // LR_PwrPublisher.publish(&LR_pwr_msg);
-  
 
   if (w_l != 0)
   {
@@ -214,8 +206,8 @@ void loop()
   }
   if (millis() - outDel >= 100)
   {
-    SendCurrentSpeedToROS();
     outDel = millis();
+    SendCurrentSpeedToROS();
   }
   nh.spinOnce();
 }

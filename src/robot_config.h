@@ -19,4 +19,4 @@
 #define GEN_START_TIME 3     //seconds
 
 #define DEBUG_PIN A1
-#define DEBUG_IS_ENABLE true
+#define DEBUG_IS_ENABLE false
